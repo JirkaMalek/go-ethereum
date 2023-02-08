@@ -51,6 +51,7 @@ type subscriptionResult struct {
 type jsonrpcMessage struct {
 	Version string          `json:"jsonrpc,omitempty"`
 	ID      json.RawMessage `json:"id,omitempty"`
+	BlockID uint64          `json:"blockid,omitempty"`
 	Method  string          `json:"method,omitempty"`
 	Params  json.RawMessage `json:"params,omitempty"`
 	Error   *jsonError      `json:"error,omitempty"`
@@ -94,6 +95,9 @@ func (msg *jsonrpcMessage) String() string {
 func (msg *jsonrpcMessage) errorResponse(err error) *jsonrpcMessage {
 	resp := errorMessage(err)
 	resp.ID = msg.ID
+	if latestBlockIndexProvider != nil {
+		resp.BlockID = latestBlockIndexProvider.GetLatestBlockIndex()
+	}
 	return resp
 }
 
@@ -103,7 +107,11 @@ func (msg *jsonrpcMessage) response(result interface{}) *jsonrpcMessage {
 		// TODO: wrap with 'internal server error'
 		return msg.errorResponse(err)
 	}
-	return &jsonrpcMessage{Version: vsn, ID: msg.ID, Result: enc}
+	resp := jsonrpcMessage{Version: vsn, ID: msg.ID, Result: enc}
+	if latestBlockIndexProvider != nil {
+		resp.BlockID = latestBlockIndexProvider.GetLatestBlockIndex()
+	}
+	return &resp
 }
 
 func errorMessage(err error) *jsonrpcMessage {

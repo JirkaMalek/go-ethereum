@@ -28,13 +28,23 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+type LatestBlockIndexProvider interface {
+	GetLatestBlockIndex() uint64
+}
+
 var (
-	executionTimeLimit = 5 * time.Second
+	executionTimeLimit       = 5 * time.Second
+	latestBlockIndexProvider LatestBlockIndexProvider
 )
 
 // SetExecutionTimeLimit sets execution limit for RPC method calls
 func SetExecutionTimeLimit(limit time.Duration) {
 	executionTimeLimit = limit
+}
+
+// SetLatestBlockIndexProvider sets the latest block index provider for RPC methods calls
+func SetLatestBlockIndexProvider(p LatestBlockIndexProvider) {
+	latestBlockIndexProvider = p
 }
 
 // handler handles JSON-RPC messages. There is one handler per connection. Note that
