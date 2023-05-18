@@ -98,7 +98,7 @@ func (msg *jsonrpcMessage) errorResponse(err error) *jsonrpcMessage {
 	resp.ID = msg.ID
 
 	if latestBlockIndexProvider != nil {
-		h := latestBlockIndexProvider.CurrentHeader()
+		h := latestBlockIndexProvider.LatestHeader()
 		resp.BlockID = h.NumberU64()
 		resp.TimeStamp = h.TimeU64()
 	}
@@ -115,7 +115,7 @@ func (msg *jsonrpcMessage) response(result interface{}) *jsonrpcMessage {
 	resp := jsonrpcMessage{Version: vsn, ID: msg.ID, Result: enc}
 
 	if latestBlockIndexProvider != nil {
-		h := latestBlockIndexProvider.CurrentHeader()
+		h := latestBlockIndexProvider.LatestHeader()
 		resp.BlockID = h.NumberU64()
 		resp.TimeStamp = h.TimeU64()
 	}

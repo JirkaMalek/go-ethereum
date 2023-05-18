@@ -35,7 +35,7 @@ type EvmHeader interface {
 
 type LatestBlockIndexProvider interface {
 	GetLatestBlockIndex() uint64
-	CurrentHeader() EvmHeader
+	LatestHeader() EvmHeader
 }
 
 var (
@@ -419,6 +419,11 @@ type ContextWithBlock struct {
 	BlockNumber uint64
 	TimeStamp   uint64
 	context.Context
+}
+
+func (cwb *ContextWithBlock) SetBlock(bn, ts uint64) {
+	cwb.BlockNumber = bn
+	cwb.TimeStamp = ts
 }
 
 // runMethod runs the Go callback for an RPC method.
