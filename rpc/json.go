@@ -49,13 +49,14 @@ type subscriptionResult struct {
 // A value of this type can a JSON-RPC request, notification, successful response or
 // error response. Which one it is depends on the fields.
 type jsonrpcMessage struct {
-	Version string          `json:"jsonrpc,omitempty"`
-	ID      json.RawMessage `json:"id,omitempty"`
-	BlockID uint64          `json:"blockid,omitempty"`
-	Method  string          `json:"method,omitempty"`
-	Params  json.RawMessage `json:"params,omitempty"`
-	Error   *jsonError      `json:"error,omitempty"`
-	Result  json.RawMessage `json:"result,omitempty"`
+	Version   string          `json:"jsonrpc,omitempty"`
+	ID        json.RawMessage `json:"id,omitempty"`
+	BlockID   uint64          `json:"blockid,omitempty"`
+	TimeStamp uint64          `json:"timestamp,omitempty"`
+	Method    string          `json:"method,omitempty"`
+	Params    json.RawMessage `json:"params,omitempty"`
+	Error     *jsonError      `json:"error,omitempty"`
+	Result    json.RawMessage `json:"result,omitempty"`
 }
 
 func (msg *jsonrpcMessage) isNotification() bool {
@@ -95,9 +96,13 @@ func (msg *jsonrpcMessage) String() string {
 func (msg *jsonrpcMessage) errorResponse(err error) *jsonrpcMessage {
 	resp := errorMessage(err)
 	resp.ID = msg.ID
+
 	if latestBlockIndexProvider != nil {
-		resp.BlockID = latestBlockIndexProvider.GetLatestBlockIndex()
+		h := latestBlockIndexProvider.CurrentHeader()
+		resp.BlockID = h.NumberU64()
+		resp.TimeStamp = h.TimeU64()
 	}
+
 	return resp
 }
 
@@ -108,9 +113,13 @@ func (msg *jsonrpcMessage) response(result interface{}) *jsonrpcMessage {
 		return msg.errorResponse(err)
 	}
 	resp := jsonrpcMessage{Version: vsn, ID: msg.ID, Result: enc}
+
 	if latestBlockIndexProvider != nil {
-		resp.BlockID = latestBlockIndexProvider.GetLatestBlockIndex()
+		h := latestBlockIndexProvider.CurrentHeader()
+		resp.BlockID = h.NumberU64()
+		resp.TimeStamp = h.TimeU64()
 	}
+
 	return &resp
 }
 

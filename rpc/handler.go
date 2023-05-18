@@ -28,8 +28,14 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+type EvmHeader interface {
+	NumberU64() uint64
+	TimeU64() uint64
+}
+
 type LatestBlockIndexProvider interface {
 	GetLatestBlockIndex() uint64
+	CurrentHeader() EvmHeader
 }
 
 var (
@@ -53,21 +59,20 @@ func SetLatestBlockIndexProvider(p LatestBlockIndexProvider) {
 //
 // The entry points for incoming messages are:
 //
-//    h.handleMsg(message)
-//    h.handleBatch(message)
+//	h.handleMsg(message)
+//	h.handleBatch(message)
 //
 // Outgoing calls use the requestOp struct. Register the request before sending it
 // on the connection:
 //
-//    op := &requestOp{ids: ...}
-//    h.addRequestOp(op)
+//	op := &requestOp{ids: ...}
+//	h.addRequestOp(op)
 //
 // Now send the request, then wait for the reply to be delivered through handleMsg:
 //
-//    if err := op.wait(...); err != nil {
-//        h.removeRequestOp(op) // timeout, etc.
-//    }
-//
+//	if err := op.wait(...); err != nil {
+//	    h.removeRequestOp(op) // timeout, etc.
+//	}
 type handler struct {
 	reg            *serviceRegistry
 	unsubscribeCb  *callback
@@ -410,13 +415,30 @@ func (h *handler) handleSubscribe(cp *callProc, msg *jsonrpcMessage) *jsonrpcMes
 	return h.runMethod(ctx, msg, callb, args)
 }
 
+type ContextWithBlock struct {
+	BlockNumber uint64
+	TimeStamp   uint64
+	context.Context
+}
+
 // runMethod runs the Go callback for an RPC method.
 func (h *handler) runMethod(ctx context.Context, msg *jsonrpcMessage, callb *callback, args []reflect.Value) *jsonrpcMessage {
-	result, err := callb.call(ctx, msg.Method, args)
+	var re *jsonrpcMessage
+	bx := ContextWithBlock{Context: ctx}
+
+	result, err := callb.call(&bx, msg.Method, args)
 	if err != nil {
-		return msg.errorResponse(err)
+		re = msg.errorResponse(err)
+	} else {
+		re = msg.response(result)
 	}
-	return msg.response(result)
+
+	if bx.BlockNumber > 0 {
+		re.BlockID = bx.BlockNumber
+		re.TimeStamp = bx.TimeStamp
+	}
+
+	return re
 }
 
 // unsubscribe is the callback function for all *_unsubscribe calls.
