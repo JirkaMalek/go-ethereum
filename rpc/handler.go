@@ -19,7 +19,9 @@ package rpc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"sync"
@@ -427,9 +429,16 @@ func (cwb *ContextWithBlock) SetBlock(bn, ts uint64) {
 }
 
 // runMethod runs the Go callback for an RPC method.
-func (h *handler) runMethod(ctx context.Context, msg *jsonrpcMessage, callb *callback, args []reflect.Value) *jsonrpcMessage {
-	var re *jsonrpcMessage
+func (h *handler) runMethod(ctx context.Context, msg *jsonrpcMessage, callb *callback, args []reflect.Value) (re *jsonrpcMessage) {
 	bx := ContextWithBlock{Context: ctx}
+
+	// make sure not to fail catastrophically if the handler could not run
+	defer func() {
+		if r := recover(); r != nil {
+			re = msg.errorResponse(fmt.Errorf("service not available"))
+			h.log.Crit("CRITICAL panic recovery in API call " + msg.Method + "; " + string(debug.Stack()))
+		}
+	}()
 
 	result, err := callb.call(&bx, msg.Method, args)
 	if err != nil {
